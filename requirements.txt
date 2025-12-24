@@ -4,3 +4,5 @@ requests
 apscheduler
 pandas
 flask
+cloudscraper
+beautifulsoup4
