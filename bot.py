@@ -4,6 +4,8 @@ import requests
 import pymongo
 import pandas as pd
 import io
+import threading
+from flask import Flask
 from datetime import datetime
 from telebot import types
 from pymongo import MongoClient
@@ -19,8 +21,19 @@ client = MongoClient(MONGO_URI)
 db = client['lottery_db']
 users_col = db['users']
 
-# --- API Endpoints from Document ---
-# [span_0](start_span)[span_1](start_span)Thai Stock 2D API Document အရ လိပ်စာများကို မှန်ကန်အောင် ပြင်ဆင်ထားသည်[span_0](end_span)[span_1](end_span)
+# --- Flask Server for Render Port Binding ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    # Render ကပေးတဲ့ PORT ကိုသုံးမယ်၊ မရှိရင် 10000 သုံးမယ်
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+# -[span_1](start_span)[span_2](start_span)-- API Endpoints[span_1](end_span)[span_2](end_span) ---
 LIVE_API = "https://api.thaistock2d.com/live" 
 HISTORY_API = "https://api.thaistock2d.com/2d_result" 
 
@@ -42,13 +55,13 @@ def main_menu():
     markup.add("👤 User Info", "⚙️ Admin Panel")
     return markup
 
-# --- Result Alert Functions ---
+# -[span_3](start_span)[span_4](start_span)-- Result Alert Functions[span_3](end_span)[span_4](end_span) ---
 def send_auto_result():
     try:
-        # [span_2](start_span)API.thaistock2d.com/live မှ ဒေတာရယူခြင်း[span_2](end_span)
+        # [span_5](start_span)API မှ live result ကို ရယူခြင်း[span_5](end_span)
         data = requests.get(LIVE_API).json()
         live = data['live']
-        # [span_3](start_span)Live result တွင် SET, Value နှင့် 2D ရလဒ်များ ပါဝင်သည်[span_3](end_span)
+        # [span_6](start_span)11:00 AM, 12:00 PM, 3:00 PM, 4:30 PM အချိန်များအတွက် ရလဒ်[span_6](end_span)
         msg = (f"🎯 2D Live Result ({live['time']})\n\n"
                f"SET: {live['set']}\nVALUE: {live['value']}\n"
                f"2D: {live['twod']}")
@@ -70,9 +83,8 @@ def welcome(m):
 
 @bot.message_handler(func=lambda m: m.text == "📊 2D History")
 def history_2d(m):
-    bot.send_message(m.chat.id, "နောက်ဆုံး ၁၀ ရက်စာ 2D ရလဒ်များကို ဆွဲယူနေပါသည်။")
+    [span_7](start_span)bot.send_message(m.chat.id, "မှတ်တမ်းများကို ဆွဲယူနေပါသည်။[span_7](end_span)")
     try:
-        # [span_4](start_span)2D result API သည် နောက်ဆုံး ၁၀ ရက်စာ မှတ်တမ်းကို ပေးနိုင်သည်[span_4](end_span)
         data = requests.get(HISTORY_API).json()
         res_text = "📊 2D Result History (Last 10 Days)\n\n"
         for day in data[:5]:
@@ -83,10 +95,6 @@ def history_2d(m):
         bot.send_message(m.chat.id, res_text)
     except:
         bot.send_message(m.chat.id, "မှတ်တမ်း ရယူ၍ မရနိုင်ပါ။")
-
-@bot.message_handler(func=lambda m: m.text == "📊 3D History")
-def history_3d(m):
-    bot.send_message(m.chat.id, "3D မှတ်တမ်း Feature ကို မကြာမီ ထည့်သွင်းပေးပါမည်။")
 
 @bot.message_handler(func=lambda m: m.text == "👤 User Info")
 def user_info(m):
@@ -112,7 +120,7 @@ def admin_panel(m):
 @bot.callback_query_handler(func=lambda call: True)
 def admin_actions(call):
     if call.data == "bc":
-        msg = bot.send_message(call.message.chat.id, "📢 ကြော်ငြာရန် ပုံ သို့မဟုတ် စာ ပို့ပေးပါ။ (Caption ထည့်နိုင်သည်)")
+        msg = bot.send_message(call.message.chat.id, "📢 ပုံ သို့မဟုတ် စာ ပို့ပေးပါ။")
         bot.register_next_step_handler(msg, do_broadcast)
     elif call.data == "csv":
         users = list(users_col.find())
@@ -134,15 +142,16 @@ def do_broadcast(m):
             success += 1
         except:
             users_col.update_one({"_id": u['_id']}, {"$set": {"status": "blocked"}})
-    bot.send_message(ADMIN_ID, f"ကြော်ငြာပို့ပြီးပါပြီ။ အောင်မြင်သူ: {success}")
+    bot.send_message(ADMIN_ID, f"ပို့ပြီးပါပြီ။ အောင်မြင်သူ: {success}")
 
 # --- Scheduler ---
 scheduler = BackgroundScheduler()
-# နေ့စဉ် ၁၂:၀၁ နှင့် ၄:၃၀ တွင် ရလဒ်ပို့ပေးရန်
 scheduler.add_job(send_auto_result, 'cron', hour=12, minute=1)
 scheduler.add_job(send_auto_result, 'cron', hour=16, minute=30)
 scheduler.start()
 
 if __name__ == "__main__":
-    print("Bot is started...")
+    # Flask ကို Thread တစ်ခုအနေနဲ့ Run မယ်
+    threading.Thread(target=run_web).start()
+    print("Bot is started with Flask Web Server...")
     bot.infinity_polling()
