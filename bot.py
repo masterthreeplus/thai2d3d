@@ -22,38 +22,37 @@ client = MongoClient(MONGO_URI)
 db = client['lottery_db']
 users_col = db['users']
 
-# Render Free Tier အတွက် Port binding လုပ်ရန်
+# Render Free Tier တွင် Port Bind လုပ်ရန် Flask server
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is alive!"
+    return "Bot is active!"
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
 # --- Thai Stock 2D API Endpoints ---
-LIVE_API = "https://api.thaistock2d.com/live" 
+LIVE_API = "https://api.thaistock2d.com/live"
 HISTORY_2D_API = "https://api.thaistock2d.com/2d_result"
 
-# --- Keyboard Menus (Admin သာမြင်ရအောင် စစ်ဆေးခြင်း) ---
+# --- Keyboard Menus (Admin/User ခွဲခြားခြင်း) ---
 def get_main_menu(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("📊 2D History", "📊 3D History")
-    # Admin ဖြစ်မှသာ Admin Menu များကို ပေါ်အောင်လုပ်ခြင်း
+    # Admin ID နှင့် ကိုက်ညီမှသာ Admin Menu များကို ပေါ်စေမည်
     if user_id == ADMIN_ID:
         markup.add("👤 My Info", "⚙️ Admin Panel")
     else:
         markup.add("👤 My Info")
     return markup
 
-# --- Auto Result Alert (၁၁:၀၀၊ ၁၂:၀၁၊ ၃:၀၀၊ ၄:၃၀) ---
+# --- Auto Result Alert (11:00, 12:01, 3:00, 4:30) ---
 def send_auto_result():
     try:
         data = requests.get(LIVE_API).json()
         live = data['live']
-        # Thai Stock 2D API မှ ရလဒ်များအား format လုပ်ခြင်း
         msg = (f"🔔 **2D/3D အချက်ပေးစနစ်**\n\n"
                f"📅 အချိန်: {live['time']}\n"
                f"--------------------------\n"
@@ -75,7 +74,7 @@ def send_auto_result():
 # --- Bot Command Handlers ---
 @bot.message_handler(commands=['start'])
 def welcome(m):
-    # User အသစ်များကို Database တွင် မှတ်တမ်းတင်ခြင်း
+    # User အချက်အလက်ကို Database တွင် သိမ်းဆည်းခြင်း
     user_data = {
         "_id": m.chat.id,
         "username": m.from_user.username or "N/A",
@@ -87,17 +86,17 @@ def welcome(m):
     
     greeting = (f"🙏 **မင်္ဂလာပါ!**\n\n"
                 "ယခုအချိန်မှစတင်ပြီး နေ့စဉ် **2D/3D Results** များကို "
-                "သင့်ထံသို့ အခမဲ့ ပေးပို့ပေးသွားပါမည်။\n\n"
+                "သင့်ထံသို့ တိကျမှန်ကန်စွာ အခမဲ့ ပေးပို့ပေးသွားပါမည်။\n\n"
                 "⏰ 11:00 AM | 12:01 PM\n"
                 "⏰ 03:00 PM | 04:30 PM\n\n"
-                "ရလဒ်မှတ်တမ်းများကိုလည်း အောက်ပါ Menu များတွင် ကြည့်ရှုနိုင်ပါသည်။")
+                "မှတ်တမ်းများကိုလည်း အောက်ပါ Menu များတွင် ကြည့်ရှုနိုင်ပါသည်။")
     bot.send_message(m.chat.id, greeting, reply_markup=get_main_menu(m.chat.id), parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.text == "📊 2D History")
 def h2d(m):
     bot.send_message(m.chat.id, "⌛ 2D မှတ်တမ်းများကို ဆွဲယူနေပါသည်။")
     try:
-        [span_0](start_span)data = requests.get(HISTORY_2D_API).json() #[span_0](end_span)
+        data = requests.get(HISTORY_2D_API).json()
         res_text = "📊 **2D Result History (နောက်ဆုံး ၁၀ ရက်)**\n\n"
         for day in data[:7]:
             res_text += f"📅 **{day.get('date', 'N/A')}**\n"
@@ -110,10 +109,9 @@ def h2d(m):
 
 @bot.message_handler(func=lambda m: m.text == "📊 3D History")
 def h3d(m):
-    # API တွင် 3D history သီးသန့်မပါပါက Live data ထဲမှ ယူပြခြင်း
     bot.send_message(m.chat.id, "⌛ 3D မှတ်တမ်းများကို ဆွဲယူနေပါသည်။")
     try:
-        [span_1](start_span)data = requests.get(LIVE_API).json() #[span_1](end_span)
+        data = requests.get(LIVE_API).json()
         res_text = "📊 **လက်ရှိ 3D/Live အခြေအနေ**\n\n"
         res_text += f"🕒 အချိန်: {data['live']['time']}\n"
         res_text += f"🎯 ထွက်ဂဏန်း: `{data['live']['twod']}`"
@@ -167,7 +165,7 @@ def do_broadcast(m):
                 bot.send_message(u['_id'], m.text)
             success += 1
         except telebot.apihelper.ApiTelegramException as e:
-            if e.error_code == 403: # Blocked by user
+            if e.error_code == 403:
                 blocked += 1
                 users_col.update_one({"_id": u['_id']}, {"$set": {"status": "blocked"}})
             else: failed += 1
@@ -184,14 +182,14 @@ def do_broadcast(m):
 
 # --- Scheduler Jobs ---
 scheduler = BackgroundScheduler()
-# API ထွက်ချိန်များကို အခြေခံ၍ အချက်ပေးရန်
+# API Document ပါ အချိန်ဇယားအတိုင်း အချက်ပေးရန်
+# 11:00, 12:01, 15:00, 16:30
 alert_times = [("11", "02"), ("12", "02"), ("15", "02"), ("16", "32")]
 for h, mi in alert_times:
     scheduler.add_job(send_auto_result, 'cron', hour=h, minute=mi)
 scheduler.start()
 
 if __name__ == "__main__":
-    # Flask ကို နောက်ကွယ်မှ စတင်ခြင်း (Render port binding အတွက်)
     threading.Thread(target=run_web).start()
     print("Bot is started successfully!")
     bot.infinity_polling()
