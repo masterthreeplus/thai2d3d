@@ -26,14 +26,14 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is running!"
+    return "Bot is active!"
 
 def run_web():
-    # Render ကပေးတဲ့ PORT ကိုသုံးမယ်၊ မရှိရင် 10000 သုံးမယ်
+    # Render ၏ Port scan ကို ကျော်ဖြတ်ရန် port binding လုပ်ခြင်း
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
-# -[span_1](start_span)[span_2](start_span)-- API Endpoints[span_1](end_span)[span_2](end_span) ---
+# --- Thai Stock 2D API Endpoints ---
 LIVE_API = "https://api.thaistock2d.com/live" 
 HISTORY_API = "https://api.thaistock2d.com/2d_result" 
 
@@ -55,13 +55,12 @@ def main_menu():
     markup.add("👤 User Info", "⚙️ Admin Panel")
     return markup
 
-# -[span_3](start_span)[span_4](start_span)-- Result Alert Functions[span_3](end_span)[span_4](end_span) ---
+# --- Result Alert Functions ---
 def send_auto_result():
     try:
-        # [span_5](start_span)API မှ live result ကို ရယူခြင်း[span_5](end_span)
+        # Daily live API မှ data ယူခြင်း
         data = requests.get(LIVE_API).json()
         live = data['live']
-        # [span_6](start_span)11:00 AM, 12:00 PM, 3:00 PM, 4:30 PM အချိန်များအတွက် ရလဒ်[span_6](end_span)
         msg = (f"🎯 2D Live Result ({live['time']})\n\n"
                f"SET: {live['set']}\nVALUE: {live['value']}\n"
                f"2D: {live['twod']}")
@@ -83,8 +82,9 @@ def welcome(m):
 
 @bot.message_handler(func=lambda m: m.text == "📊 2D History")
 def history_2d(m):
-    [span_7](start_span)bot.send_message(m.chat.id, "မှတ်တမ်းများကို ဆွဲယူနေပါသည်။[span_7](end_span)")
+    bot.send_message(m.chat.id, "မှတ်တမ်းများကို ဆွဲယူနေပါသည်။")
     try:
+        # 2D result API မှ နောက်ဆုံး ၁၀ ရက်စာ မှတ်တမ်းယူခြင်း
         data = requests.get(HISTORY_API).json()
         res_text = "📊 2D Result History (Last 10 Days)\n\n"
         for day in data[:5]:
@@ -146,12 +146,13 @@ def do_broadcast(m):
 
 # --- Scheduler ---
 scheduler = BackgroundScheduler()
+# နေ့စဉ် ၁၂:၀၁ နှင့် ၄:၃၀ တွင် ရလဒ်ပို့ပေးရန်
 scheduler.add_job(send_auto_result, 'cron', hour=12, minute=1)
 scheduler.add_job(send_auto_result, 'cron', hour=16, minute=30)
 scheduler.start()
 
 if __name__ == "__main__":
-    # Flask ကို Thread တစ်ခုအနေနဲ့ Run မယ်
+    # Flask server ကို Thread ဖြင့်စတင်ခြင်း
     threading.Thread(target=run_web).start()
     print("Bot is started with Flask Web Server...")
     bot.infinity_polling()
