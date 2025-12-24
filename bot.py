@@ -1,4 +1,3 @@
-
 import os
 import telebot
 import requests
@@ -21,8 +20,9 @@ db = client['lottery_db']
 users_col = db['users']
 
 # --- API Endpoints from Document ---
-[span_3](start_span)LIVE_API = "https://api.thaistock2d.com/live" #[span_3](end_span)
-[span_4](start_span)HISTORY_API = "https://api.thaistock2d.com/2d_result" #[span_4](end_span)
+# [span_0](start_span)[span_1](start_span)Thai Stock 2D API Document အရ လိပ်စာများကို မှန်ကန်အောင် ပြင်ဆင်ထားသည်[span_0](end_span)[span_1](end_span)
+LIVE_API = "https://api.thaistock2d.com/live" 
+HISTORY_API = "https://api.thaistock2d.com/2d_result" 
 
 # --- Database & User Functions ---
 def register_user(m):
@@ -45,13 +45,14 @@ def main_menu():
 # --- Result Alert Functions ---
 def send_auto_result():
     try:
-        [span_5](start_span)data = requests.get(LIVE_API).json() #[span_5](end_span)
-        [span_6](start_span)live = data['live'] #[span_6](end_span)
-        [span_7](start_span)msg = (f"🎯 2D Live Result ({live['time']})\n\n" #[span_7](end_span)
-               [span_8](start_span)f"SET: {live['set']}\nVALUE: {live['value']}\n" #[span_8](end_span)
-               [span_9](start_span)f"2D: {live['twod']}") #[span_9](end_span)
+        # [span_2](start_span)API.thaistock2d.com/live မှ ဒေတာရယူခြင်း[span_2](end_span)
+        data = requests.get(LIVE_API).json()
+        live = data['live']
+        # [span_3](start_span)Live result တွင် SET, Value နှင့် 2D ရလဒ်များ ပါဝင်သည်[span_3](end_span)
+        msg = (f"🎯 2D Live Result ({live['time']})\n\n"
+               f"SET: {live['set']}\nVALUE: {live['value']}\n"
+               f"2D: {live['twod']}")
         
-        # Active user များကိုသာ ပို့မည်
         active_users = users_col.find({"status": "active"})
         for user in active_users:
             try:
@@ -71,8 +72,9 @@ def welcome(m):
 def history_2d(m):
     bot.send_message(m.chat.id, "နောက်ဆုံး ၁၀ ရက်စာ 2D ရလဒ်များကို ဆွဲယူနေပါသည်။")
     try:
-        [span_10](start_span)data = requests.get(HISTORY_API).json() #[span_10](end_span)
-        [span_11](start_span)res_text = "📊 2D Result History (Last 10 Days)\n\n" #[span_11](end_span)
+        # [span_4](start_span)2D result API သည် နောက်ဆုံး ၁၀ ရက်စာ မှတ်တမ်းကို ပေးနိုင်သည်[span_4](end_span)
+        data = requests.get(HISTORY_API).json()
+        res_text = "📊 2D Result History (Last 10 Days)\n\n"
         for day in data[:5]:
             res_text += f"📅 Date: {day.get('date', 'N/A')}\n"
             for c in day.get('child', []):
@@ -81,6 +83,10 @@ def history_2d(m):
         bot.send_message(m.chat.id, res_text)
     except:
         bot.send_message(m.chat.id, "မှတ်တမ်း ရယူ၍ မရနိုင်ပါ။")
+
+@bot.message_handler(func=lambda m: m.text == "📊 3D History")
+def history_3d(m):
+    bot.send_message(m.chat.id, "3D မှတ်တမ်း Feature ကို မကြာမီ ထည့်သွင်းပေးပါမည်။")
 
 @bot.message_handler(func=lambda m: m.text == "👤 User Info")
 def user_info(m):
@@ -132,7 +138,7 @@ def do_broadcast(m):
 
 # --- Scheduler ---
 scheduler = BackgroundScheduler()
-# [span_12](start_span)နေ့စဉ် ၁၂:၀၁ နှင့် ၄:၃၀ တွင် ရလဒ်ပို့ပေးရန်[span_12](end_span)
+# နေ့စဉ် ၁၂:၀၁ နှင့် ၄:၃၀ တွင် ရလဒ်ပို့ပေးရန်
 scheduler.add_job(send_auto_result, 'cron', hour=12, minute=1)
 scheduler.add_job(send_auto_result, 'cron', hour=16, minute=30)
 scheduler.start()
